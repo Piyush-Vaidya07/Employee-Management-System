@@ -1,0 +1,47 @@
+/* Modern Design System for GeoFace */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Custom modern scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #020617;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+.tab-btn.active {
+  color: #60a5fa;
+  border-bottom-color: #3b82f6;
+}
+
+/* Radar pulse animation */
+@keyframes radar-pulse {
+  0% {
+    transform: scale(0.96);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 12px rgba(59, 130, 246, 0);
+  }
+  100% {
+    transform: scale(0.96);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+.radar-active {
+  animation: radar-pulse 2s infinite ease-out;
+}

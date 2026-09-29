@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FaceAttend Pro - Smart AI Biometric Attendance System</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <!-- Supabase Cloud PostgreSQL Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col antialiased selection:bg-blue-600 selection:text-white">
+
+  <!-- Top Navigation Header -->
+  <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50 px-4 sm:px-8 py-3 flex justify-between items-center shadow-lg">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+        <i class="fa-solid fa-brain text-xl text-white"></i>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <h1 class="font-bold text-base sm:text-lg tracking-tight text-white">FaceAttend <span class="text-blue-400">Pro</span></h1>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">AI Biometrics</span>
+        </div>
+        <p class="text-xs text-slate-400 hidden sm:block">Touchless Facial Attendance with Real-Time Biometric Analysis</p>
+      </div>
+    </div>
+
+    <!-- Right Controls: Status & User Auth Pill -->
+    <div class="flex items-center space-x-3">
+      <!-- System Status Badge -->
+      <div class="hidden md:flex items-center space-x-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full text-xs font-medium text-emerald-400">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span>System Online</span>
+      </div>
+
+      <!-- Supabase Cloud Sync Status Badge (Admin Only) -->
+      <button type="button" onclick="openSupabaseConfigModal()" id="supabaseStatusBadge" title="Supabase Cloud PostgreSQL Database - Click to view status or configure" class="hidden items-center space-x-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/25 px-2.5 py-1.5 rounded-full text-xs font-medium text-indigo-300 transition cursor-pointer">
+        <i class="fa-solid fa-cloud text-xs text-indigo-400"></i>
+        <span id="supabaseStatusText">Supabase Sync</span>
+        <span id="supabaseStatusDot" class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+      </button>
+
+      <!-- Auth Logged Out State -->
+      <div id="authHeaderLoggedOut" class="flex items-center space-x-2">
+        <button type="button" onclick="openAuthModal('login')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-500/20 transition flex items-center space-x-1.5 cursor-pointer">
+          <i class="fa-solid fa-right-to-bracket"></i>
+          <span>Sign In</span>
+        </button>
+        <button type="button" onclick="openAuthModal('signup')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-[0.98] text-slate-200 hover:text-white rounded-xl text-xs font-semibold border border-slate-700 transition flex items-center space-x-1.5 cursor-pointer">
+          <i class="fa-solid fa-user-plus"></i>
+          <span>Register</span>
+        </button>
+      </div>
+
+      <!-- Auth Logged In State -->
+      <div id="authHeaderLoggedIn" class="hidden flex items-center space-x-2.5 bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded-xl shadow-sm">
+        <img id="userHeaderAvatar" class="w-7 h-7 rounded-lg object-cover border border-slate-700 shadow cursor-pointer" onclick="switchTab('profileTab')" src="" alt="Avatar" />
+        <div class="text-left hidden sm:block cursor-pointer" onclick="switchTab('profileTab')">
+          <p id="userHeaderName" class="text-xs font-semibold text-slate-200 leading-tight hover:text-blue-400 transition">Admin</p>
+          <p id="userHeaderEmail" class="text-[10px] text-slate-400 leading-tight">admin@gmail.com</p>
+        </div>
+        <span id="userHeaderRoleBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Admin</span>
+        <!-- Profile Detail Icon -->
+        <button type="button" id="headerProfileBtn" onclick="switchTab('profileTab')" title="Click to view all profile details" class="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-blue-500/15 rounded-lg text-sm transition flex items-center justify-center cursor-pointer">
+          <i class="fa-solid fa-circle-user text-base"></i>
+        </button>
+        <!-- Sign In / Register Quick Access -->
+        <button type="button" onclick="openAuthModal('login')" title="Sign In or Register New Account" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-medium border border-slate-700 flex items-center space-x-1 transition ml-0.5 cursor-pointer">
+          <i class="fa-solid fa-user-plus text-[11px] text-indigo-400"></i>
+          <span class="hidden md:inline text-[11px]">Sign In / Register</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Metric Analytics Banner -->
+  <section class="bg-slate-900/60 border-b border-slate-800/80 px-4 sm:px-8 py-3">
+    <div class="max-w-6xl mx-auto grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
+      <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 flex items-center space-x-3">
+        <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm font-bold">
+          <i class="fa-solid fa-users"></i>
+        </div>
+        <div>
+          <span class="text-slate-400 text-[10px] uppercase font-semibold">Enrolled Staff</span>
+          <p id="statTotalStaff" class="text-sm font-bold text-slate-200">0</p>
+        </div>
+      </div>
+
+      <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 flex items-center space-x-3">
+        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm font-bold">
+          <i class="fa-solid fa-calendar-check"></i>
+        </div>
+        <div>
+          <span class="text-slate-400 text-[10px] uppercase font-semibold">Today's Present</span>
+          <p id="statTodayPresents" class="text-sm font-bold text-emerald-400">0</p>
+        </div>
+      </div>
+
+      <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 flex items-center space-x-3">
+        <div class="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-sm font-bold">
+          <i class="fa-solid fa-percent"></i>
+        </div>
+        <div class="flex-1">
+          <span class="text-slate-400 text-[10px] uppercase font-semibold">Attendance Rate</span>
+          <div class="flex items-center space-x-2">
+            <p id="statAttendanceRate" class="text-sm font-bold text-cyan-400">0%</p>
+            <div class="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+              <div id="statAttendanceBar" class="h-full bg-cyan-400 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 flex items-center space-x-3">
+        <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm font-bold">
+          <i class="fa-solid fa-user-clock"></i>
+        </div>
+        <div>
+          <span class="text-slate-400 text-[10px] uppercase font-semibold">Punctuality</span>
+          <p id="statPunctualityRate" class="text-sm font-bold text-amber-400">100%</p>
+        </div>
+      </div>
+
+      <div class="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 flex items-center space-x-3 col-span-2 sm:col-span-1">
+        <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center text-sm font-bold">
+          <i class="fa-solid fa-clock"></i>
+        </div>
+        <div>
+          <span class="text-slate-400 text-[10px] uppercase font-semibold">Avg Hours Logged</span>
+          <p id="statAvgHours" class="text-sm font-bold text-purple-400">-- hrs</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Navigation Tabs -->
+  <nav class="bg-slate-900 border-b border-slate-800 px-4 sm:px-8 flex space-x-2 sm:space-x-6 overflow-x-auto">
+    <button onclick="switchTab('punchTab')" id="tabBtn-punchTab" class="tab-btn px-3 py-3 font-semibold text-xs sm:text-sm border-b-2 border-blue-500 text-blue-400 flex items-center space-x-2 whitespace-nowrap">
+      <i class="fa-solid fa-camera"></i>
+      <span>Smart Biometric Scanner</span>
+    </button>
+    <button onclick="switchTab('logsTab')" id="tabBtn-logsTab" class="tab-btn px-3 py-3 font-medium text-xs sm:text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center space-x-2 whitespace-nowrap">
+      <i class="fa-solid fa-chart-pie"></i>
+      <span>Attendance & Work Hours</span>
+    </button>
+  </nav>
+
+  <!-- Main View -->
+  <main class="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 space-y-6">
+
+    <!-- ================= TAB 1: SMART ATTENDANCE ================= -->
+    <section id="punchTab" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- Left: Camera Viewfinder (7 cols) -->
+      <div class="lg:col-span-7 bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-2xl flex flex-col justify-between">
+        <div>
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-slate-300 flex items-center space-x-2">
+              <i class="fa-solid fa-video text-blue-500"></i>
+              <span>Live Biometric Viewfinder</span>
+            </h2>
+            <div id="livenessPill" class="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center space-x-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>Camera Ready</span>
+            </div>
+          </div>
+
+          <!-- Video Camera Container -->
+          <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden border-2 border-slate-800 shadow-inner">
+            <video id="videoElement" autoplay playsinline muted class="w-full h-full object-cover block"></video>
+            <canvas id="captureCanvas" class="hidden"></canvas>
+            
+            <!-- Facial Target Guide Overlay -->
+            <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
+              <div id="targetOval" class="w-48 h-60 border-2 border-dashed border-blue-400/50 rounded-full flex flex-col items-center justify-center transition-all duration-300">
+                <span id="targetGuideText" class="text-[10px] text-blue-300/80 bg-slate-900/80 px-2.5 py-0.5 rounded-full backdrop-blur-sm">Align Face in Oval</span>
+              </div>
+            </div>
+
+            <!-- Simple Camera Permission Prompt & Retry Overlay -->
+            <div id="cameraPromptOverlay" class="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-6 text-center z-20">
+              <i class="fa-solid fa-camera text-4xl text-blue-500 mb-2"></i>
+              <p id="cameraStatusMsg" class="text-sm text-slate-200 font-semibold">Camera Access Required</p>
+              <div id="cameraInstructionText" class="text-xs text-slate-400 mt-1 max-w-xs mb-4">Click below to allow camera access and start live feed.</div>
+              <button onclick="startCamera()" id="grantCameraBtn" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-xs font-bold rounded-xl text-white transition cursor-pointer flex items-center space-x-2 shadow-lg shadow-blue-600/30 active:scale-95">
+                <i class="fa-solid fa-camera"></i>
+                <span>Grant Camera Permission</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Punch Action Controls -->
+        <div class="mt-5 space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <button onclick="handlePunch('CHECK_IN')" id="punchInBtn" class="py-3 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-semibold rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center justify-center space-x-2">
+              <i class="fa-solid fa-right-to-bracket"></i>
+              <span>Punch In</span>
+            </button>
+            <button onclick="handlePunch('CHECK_OUT')" id="punchOutBtn" class="py-3 px-4 bg-rose-600 hover:bg-rose-500 active:scale-[0.98] text-white font-semibold rounded-xl shadow-lg shadow-rose-600/20 transition flex items-center justify-center space-x-2">
+              <i class="fa-solid fa-right-from-bracket"></i>
+              <span>Punch Out</span>
+            </button>
+          </div>
+          <p class="text-center text-[11px] text-slate-400">Features Active Liveness Anti-Spoofing and Voice Feedback AI.</p>
+        </div>
+      </div>
+
+      <!-- Right: Worker Selection & Match Visualizer (5 cols) -->
+      <div class="lg:col-span-5 space-y-4">
+        
+        <!-- Employee Select Card -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
+          <div class="flex justify-between items-center">
+            <h2 class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-slate-300 flex items-center space-x-2">
+              <i class="fa-solid fa-user-check text-blue-400"></i>
+              <span>Employee Selection</span>
+            </h2>
+            <button onclick="runAutoIdentify()" class="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center space-x-1 font-semibold">
+              <i class="fa-solid fa-wand-magic-sparkles"></i>
+              <span>Auto-Detect</span>
+            </button>
+          </div>
+          <select id="workerSelect" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
+            <option value="">Loading enrolled staff...</option>
+          </select>
+          
+          <div id="workerPreviewCard" class="mt-3 p-3.5 bg-slate-950 rounded-xl border border-slate-800 hidden space-y-3">
+            <div class="flex items-center space-x-3">
+              <img id="workerPreviewImg" class="w-12 h-12 rounded-xl object-cover border border-slate-700 shadow-md" alt="Employee profile" />
+              <div class="flex-1 min-w-0">
+                <p id="workerPreviewName" class="text-xs font-bold text-slate-100 truncate">-</p>
+                <p id="workerPreviewRole" class="text-[11px] text-slate-400 truncate">-</p>
+              </div>
+              <div class="text-right flex flex-col items-end space-y-1">
+                <span id="workerPreviewStatus" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-800 text-slate-400">Out</span>
+                <span id="workerPunctualityBadge" class="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">On-Time</span>
+              </div>
+            </div>
+
+            <!-- Employee Individual Attendance Track Record -->
+            <div class="pt-2 border-t border-slate-800/80 grid grid-cols-3 gap-2 text-center text-[10px]">
+              <div class="bg-slate-900/60 p-1.5 rounded-lg border border-slate-800">
+                <span class="text-slate-400 block">Attendance Rate</span>
+                <span id="workerAttendRate" class="font-bold text-emerald-400 text-xs">--%</span>
+              </div>
+              <div class="bg-slate-900/60 p-1.5 rounded-lg border border-slate-800">
+                <span class="text-slate-400 block">Days Present</span>
+                <span id="workerDaysPresent" class="font-bold text-blue-400 text-xs">--</span>
+              </div>
+              <div class="bg-slate-900/60 p-1.5 rounded-lg border border-slate-800">
+                <span class="text-slate-400 block">Avg Shift</span>
+                <span id="workerAvgShift" class="font-bold text-purple-400 text-xs">-- hrs</span>
+              </div>
+            </div>
+
+            <!-- Attendance Progress Bar -->
+            <div class="space-y-1">
+              <div class="flex justify-between text-[10px] text-slate-400">
+                <span>Monthly Target (75% Minimum)</span>
+                <span id="workerAttendBarText" class="font-semibold text-slate-300">0%</span>
+              </div>
+              <div class="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                <div id="workerAttendProgressBar" class="h-full bg-emerald-500 transition-all duration-500" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Biometric Match Visualizer Card -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
+          <h2 class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-slate-300 flex items-center space-x-2">
+            <i class="fa-solid fa-microchip text-indigo-400"></i>
+            <span>Biometric Match Visualizer</span>
+          </h2>
+
+          <!-- Match Meter Bar -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between text-xs font-semibold">
+              <span class="text-slate-400">Facial Similarity Score</span>
+              <span id="matchScorePercent" class="text-slate-200">0%</span>
+            </div>
+            <div class="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+              <div id="matchProgressBar" class="h-full bg-blue-500 transition-all duration-500 w-0"></div>
+            </div>
+          </div>
+
+          <!-- Liveness Metrics Grid -->
+          <div class="grid grid-cols-2 gap-2 text-xs pt-1">
+            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+              <span class="text-slate-500 text-[10px] uppercase font-semibold block">Skin Tone Variance</span>
+              <span id="metricSkin" class="font-bold text-slate-300">Natural</span>
+            </div>
+            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+              <span class="text-slate-500 text-[10px] uppercase font-semibold block">Screen Moiré Check</span>
+              <span id="metricMoire" class="font-bold text-emerald-400">Passed</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Punch Verdict Toast / Result Card -->
+        <div id="punchResultBox" class="hidden p-4 rounded-xl border text-xs leading-relaxed shadow-lg"></div>
+      </div>
+    </section>
+
+    <!-- ================= TAB 2: ATTENDANCE & WORK HOURS ================= -->
+    <section id="logsTab" class="hidden bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-5">
+      <div class="flex flex-wrap justify-between items-center gap-3">
+        <div>
+          <h2 id="logsTabHeading" class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-slate-300">Biometric Attendance Analytics & Work Hours</h2>
+          <p id="logsTabSub" class="text-xs text-slate-400">Calculates punch duration, attendance percentage, punctuality, and biometric confidence.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button type="button" id="logsStaffRosterBtn" onclick="switchTab('profileTab')" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 hover:text-white rounded-xl flex items-center space-x-1.5 transition border border-slate-700 cursor-pointer shadow-sm">
+            <i class="fa-solid fa-users text-indigo-400"></i>
+            <span>Staff Roster</span>
+          </button>
+          <button type="button" id="logsEditShiftBtn" onclick="openShiftModal()" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white rounded-xl flex items-center space-x-1.5 transition shadow-md cursor-pointer">
+            <i class="fa-solid fa-business-time"></i>
+            <span>Edit Shift Time</span>
+          </button>
+          <button onclick="exportLogsToCSV()" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white rounded-xl flex items-center space-x-1.5 transition shadow-md cursor-pointer">
+            <i class="fa-solid fa-file-csv"></i>
+            <span>Export CSV</span>
+          </button>
+          <button id="clearLogsBtn" onclick="clearAttendanceLogs()" class="px-3.5 py-1.5 bg-slate-800 hover:bg-rose-900/50 text-xs text-slate-300 hover:text-rose-300 rounded-xl flex items-center space-x-1.5 transition border border-slate-700 cursor-pointer">
+            <i class="fa-solid fa-trash"></i>
+            <span>Clear Logs</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 7-Day Attendance Trend Visualizer -->
+      <div class="p-4 bg-slate-950 rounded-xl border border-slate-800">
+        <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+          <span class="text-xs font-semibold text-slate-300 flex items-center space-x-2">
+            <i class="fa-solid fa-chart-simple text-blue-400"></i>
+            <span>7-Day Attendance Trend & Turnout</span>
+          </span>
+          <button type="button" onclick="openShiftModal()" title="Click to edit shift work hours schedule" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 text-[11px] text-slate-300 hover:text-indigo-300 transition flex items-center space-x-1.5 shadow-sm cursor-pointer">
+            <i class="fa-solid fa-clock text-indigo-400"></i>
+            <span>Shift Target:</span>
+            <span id="shiftTargetDisplay" class="font-bold text-white">09:30 AM</span>
+            <i class="fa-solid fa-pen text-[10px] text-indigo-400 ml-0.5"></i>
+          </button>
+        </div>
+        <div id="weeklyAttendanceChart" class="grid grid-cols-7 gap-2 items-end h-28 pt-4 border-b border-slate-800/80 pb-2">
+          <!-- Dynamically populated 7-day bars -->
+        </div>
+      </div>
+
+      <!-- Search & Filter Controls -->
+      <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+        <div class="flex flex-wrap items-center gap-2 flex-1 max-w-md">
+          <div class="relative flex-1">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-500"></i>
+            <input type="text" id="logSearchInput" oninput="applyLogFilters()" placeholder="Search employee name or ID..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" />
+          </div>
+          <select id="logFilterType" onchange="applyLogFilters()" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-blue-500 transition">
+            <option value="ALL">All Punches</option>
+            <option value="TODAY">Today Only</option>
+            <option value="CHECK_IN">Check-In Only</option>
+            <option value="CHECK_OUT">Check-Out Only</option>
+            <option value="LATE">Late Arrivals Only</option>
+          </select>
+        </div>
+        <div class="text-xs text-slate-400">
+          <span id="logRecordCountBadge" class="px-2.5 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-300 font-mono text-[11px]">0 Records</span>
+        </div>
+      </div>
+
+      <!-- Logs Table -->
+      <div class="overflow-x-auto rounded-xl border border-slate-800">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+            <tr>
+              <th class="py-3 px-4">Employee ID</th>
+              <th class="py-3 px-4">Name</th>
+              <th class="py-3 px-4">Punch Type</th>
+              <th class="py-3 px-4">Punctuality</th>
+              <th class="py-3 px-4">Timestamp</th>
+              <th class="py-3 px-4">Shift Duration</th>
+              <th class="py-3 px-4">Biometric Match</th>
+              <th class="py-3 px-4">Status</th>
+            </tr>
+          </thead>
+          <tbody id="logsTableBody" class="divide-y divide-slate-800/60 bg-slate-900/40">
+            <tr>
+              <td colspan="8" class="text-center py-6 text-slate-500">No attendance records found.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================= USER & ADMIN PROFILE PAGE ================= -->
+    <section id="profileTab" class="hidden space-y-6">
+      
+      <!-- Profile Navigation Bar -->
+      <div class="flex items-center justify-between">
+        <button onclick="switchTab('punchTab')" class="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-blue-400 text-xs font-semibold rounded-xl border border-slate-800 transition flex items-center space-x-2 shadow-sm">
+          <i class="fa-solid fa-arrow-left"></i>
+          <span>Back to Scanner</span>
+        </button>
+        <span class="text-xs text-slate-400 font-medium flex items-center space-x-1.5">
+          <i class="fa-solid fa-id-card-clip text-blue-400"></i>
+          <span>Personal Account & Biometrics</span>
+        </span>
+      </div>
+
+      <!-- Top Profile Overview Card -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+        <!-- Ambient background glow -->
+        <div class="absolute -right-20 -top-20 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 relative z-10">
+          <!-- Profile Facial Portrait -->
+          <div class="relative group">
+            <img id="profilePageAvatar" class="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl object-cover border-4 border-slate-800 shadow-2xl shadow-blue-500/10" src="" alt="Facial Biometric Portrait" />
+            <button onclick="updateProfilePhotoFromCamera()" title="Update Biometric Photo" class="absolute -bottom-2 -right-2 w-9 h-9 rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center text-xs shadow-lg transition">
+              <i class="fa-solid fa-camera"></i>
+            </button>
+          </div>
+
+          <!-- Profile Details -->
+          <div class="flex-1 text-center sm:text-left space-y-2">
+            <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+              <h2 id="profilePageName" class="text-xl sm:text-2xl font-bold text-white tracking-tight">--</h2>
+              <span id="profilePageRoleBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">Admin</span>
+              <span id="profilePageStatusBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center space-x-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Active Verified Profile</span>
+              </span>
+            </div>
+
+            <p id="profilePageEmail" class="text-sm text-slate-300 font-medium flex items-center justify-center sm:justify-start space-x-2">
+              <i class="fa-solid fa-envelope text-slate-500 text-xs"></i>
+              <span>--@gmail.com</span>
+            </p>
+
+            <p id="profilePageMeta" class="text-xs text-slate-400">Account ID: <span id="profilePageId" class="font-mono text-slate-300">--</span> • Biometrics: <span class="text-emerald-400 font-semibold">Active Vector Signature</span></p>
+
+            <!-- Action buttons -->
+            <div class="pt-2 flex flex-wrap items-center justify-center sm:justify-start gap-3">
+              <button type="button" id="profileEditShiftBtn" onclick="openShiftModal()" class="px-3.5 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 hover:text-indigo-200 text-xs font-semibold rounded-xl border border-indigo-500/30 transition flex items-center space-x-1.5 shadow cursor-pointer">
+                <i class="fa-solid fa-business-time"></i>
+                <span>Edit Shift Time</span>
+              </button>
+              <button onclick="openAuthModal('login')" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition flex items-center space-x-1.5 shadow cursor-pointer">
+                <i class="fa-solid fa-users-viewfinder"></i>
+                <span>Switch Account</span>
+              </button>
+              <button onclick="handleLogout()" class="px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 text-xs font-semibold rounded-xl border border-rose-500/30 transition flex items-center space-x-1.5 cursor-pointer">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Performance & Account Metrics Grid -->
+      <div id="profileMetricsSection" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Card 1 -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider" id="profileCard1Label">Attendance Rate</span>
+            <div class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xs">
+              <i class="fa-solid fa-percent"></i>
+            </div>
+          </div>
+          <p id="profileCard1Value" class="text-2xl font-bold text-emerald-400">0%</p>
+          <p id="profileCard1Sub" class="text-[11px] text-slate-500 mt-1">Evaluated against 75% target</p>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider" id="profileCard2Label">Days Present</span>
+            <div class="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-xs">
+              <i class="fa-solid fa-calendar-check"></i>
+            </div>
+          </div>
+          <p id="profileCard2Value" class="text-2xl font-bold text-blue-400">0</p>
+          <p id="profileCard2Sub" class="text-[11px] text-slate-500 mt-1">Unique shift dates</p>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider" id="profileCard3Label">Punctuality Score</span>
+            <div class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs">
+              <i class="fa-solid fa-clock"></i>
+            </div>
+          </div>
+          <p id="profileCard3Value" class="text-2xl font-bold text-amber-400">100%</p>
+          <p id="profileCard3Sub" class="text-[11px] text-slate-500 mt-1">Target shift: 09:30 AM</p>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider" id="profileCard4Label">Shift Duration</span>
+            <div class="w-7 h-7 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center text-xs">
+              <i class="fa-solid fa-business-time"></i>
+            </div>
+          </div>
+          <p id="profileCard4Value" class="text-2xl font-bold text-purple-400">--</p>
+          <p id="profileCard4Sub" class="text-[11px] text-slate-500 mt-1">Avg recorded working time</p>
+        </div>
+      </div>
+
+      <!-- ================= ADMIN EXCLUSIVE: STAFF ROSTER & TODAY'S ATTENDANCE STATUS ================= -->
+      <div id="adminStaffRosterSection" class="hidden bg-slate-900/90 border border-indigo-500/30 rounded-2xl p-5 shadow-2xl space-y-4">
+        
+        <!-- Section Header with Badges -->
+        <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-800/80 pb-3">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                <i class="fa-solid fa-crown mr-1"></i>Admin Exclusive
+              </span>
+              <h3 class="text-sm sm:text-base font-bold text-white tracking-tight">Staff Shift Directory & Today's Attendance Roster</h3>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">Live status of all enrolled employees, their scheduled shift, who came today, and who did not.</p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button type="button" onclick="openShiftModal()" class="px-3 py-1.5 bg-indigo-600/80 hover:bg-indigo-600 text-white rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 shadow cursor-pointer">
+              <i class="fa-solid fa-clock"></i>
+              <span>Edit Company Shift</span>
+            </button>
+            <button type="button" onclick="renderAdminStaffRoster()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 border border-slate-700 cursor-pointer">
+              <i class="fa-solid fa-rotate"></i>
+              <span>Refresh</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Today's Attendance Breakdown Stats -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center space-x-3">
+            <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center font-bold">
+              <i class="fa-solid fa-users"></i>
+            </div>
+            <div>
+              <span class="text-slate-500 text-[10px] uppercase font-semibold">Total Staff</span>
+              <p id="adminStatTotalStaff" class="text-base font-bold text-white">0</p>
+            </div>
+          </div>
+
+          <div class="bg-slate-950 p-3 rounded-xl border border-emerald-500/30 flex items-center space-x-3">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <div>
+              <span class="text-emerald-400 text-[10px] uppercase font-semibold">Came Today (Present)</span>
+              <p id="adminStatCameToday" class="text-base font-bold text-emerald-400">0</p>
+            </div>
+          </div>
+
+          <div class="bg-slate-950 p-3 rounded-xl border border-rose-500/30 flex items-center space-x-3">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center font-bold">
+              <i class="fa-solid fa-circle-xmark"></i>
+            </div>
+            <div>
+              <span class="text-rose-400 text-[10px] uppercase font-semibold">Did Not Come (Absent)</span>
+              <p id="adminStatNotComeToday" class="text-base font-bold text-rose-400">0</p>
+            </div>
+          </div>
+
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center space-x-3">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold">
+              <i class="fa-solid fa-chart-line"></i>
+            </div>
+            <div>
+              <span class="text-slate-500 text-[10px] uppercase font-semibold">Turnout Rate</span>
+              <p id="adminStatTurnoutPercent" class="text-base font-bold text-indigo-300">0%</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter Buttons & Search -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <div class="flex flex-wrap items-center gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800 text-xs">
+            <button type="button" id="rosterFilter-ALL" onclick="filterAdminRoster('ALL')" class="px-3 py-1 rounded-lg bg-blue-600 text-white font-semibold shadow transition cursor-pointer">
+              All Employees (<span id="rosterCountAll">0</span>)
+            </button>
+            <button type="button" id="rosterFilter-CAME" onclick="filterAdminRoster('CAME')" class="px-3 py-1 rounded-lg text-slate-400 hover:text-emerald-300 font-semibold transition cursor-pointer">
+              <i class="fa-solid fa-check mr-1 text-emerald-400"></i>Came Today (<span id="rosterCountCame">0</span>)
+            </button>
+            <button type="button" id="rosterFilter-NOT_COME" onclick="filterAdminRoster('NOT_COME')" class="px-3 py-1 rounded-lg text-slate-400 hover:text-rose-300 font-semibold transition cursor-pointer">
+              <i class="fa-solid fa-xmark mr-1 text-rose-400"></i>Did Not Come (<span id="rosterCountNotCome">0</span>)
+            </button>
+          </div>
+
+          <div class="relative flex-1 max-w-xs">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-slate-500"></i>
+            <input type="text" id="adminRosterSearchInput" oninput="renderAdminStaffRoster()" placeholder="Search staff name or ID..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition" />
+          </div>
+        </div>
+
+        <!-- Staff List Table -->
+        <div class="overflow-x-auto rounded-xl border border-slate-800">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+              <tr>
+                <th class="py-3 px-4">Employee</th>
+                <th class="py-3 px-4">Work Shift</th>
+                <th class="py-3 px-4">Today's Attendance</th>
+                <th class="py-3 px-4">Punch Timestamps</th>
+                <th class="py-3 px-4">Shift Duration</th>
+                <th class="py-3 px-4">Attendance Record</th>
+                <th class="py-3 px-4 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody id="adminStaffRosterTableBody" class="divide-y divide-slate-800/60 bg-slate-900/40">
+              <tr>
+                <td colspan="7" class="text-center py-6 text-slate-500">Loading staff shift roster...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+      <!-- User's Personal Punch History Table -->
+      <div id="profilePersonalHistoryContainer" class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+        <div class="flex flex-wrap justify-between items-center gap-3">
+          <div>
+            <h3 id="profileTableTitle" class="text-xs sm:text-sm font-semibold uppercase tracking-wider text-slate-300">Personal Biometric Punch Log</h3>
+            <p class="text-xs text-slate-400">Attendance punches verified for this user account.</p>
+          </div>
+          <button onclick="switchTab('punchTab')" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white rounded-xl shadow transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-camera"></i>
+            <span>Punch Attendance Now</span>
+          </button>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-slate-800">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+              <tr>
+                <th class="py-3 px-4">Punch Type</th>
+                <th class="py-3 px-4">Punctuality</th>
+                <th class="py-3 px-4">Date & Time</th>
+                <th class="py-3 px-4">Shift Duration</th>
+                <th class="py-3 px-4">Biometric Confidence</th>
+                <th class="py-3 px-4">Status</th>
+              </tr>
+            </thead>
+            <tbody id="profileLogsTableBody" class="divide-y divide-slate-800/60 bg-slate-900/40">
+              <tr>
+                <td colspan="6" class="text-center py-6 text-slate-500">No punches found for this account.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= AUTHENTICATION MODAL (LOGIN & SIGNUP) ================= -->
+  <div id="authModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+    <div class="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden p-6 sm:p-7 space-y-5 my-8">
+      
+      <!-- Close button -->
+      <button onclick="closeAuthModal()" class="absolute top-5 right-5 text-slate-400 hover:text-white transition">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+
+      <!-- Modal Header -->
+      <div class="text-center space-y-1.5">
+        <div class="inline-flex p-3 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 shadow-lg shadow-blue-500/25">
+          <i class="fa-solid fa-shield-halved text-2xl text-white"></i>
+        </div>
+        <h3 id="authModalTitle" class="text-lg font-bold text-white tracking-tight">Portal Authentication</h3>
+        <p id="authModalSubtitle" class="text-xs text-slate-400">Sign in to your account or register with facial biometrics</p>
+      </div>
+
+      <!-- Auth Switcher (Tabs) -->
+      <div class="grid grid-cols-2 p-1 bg-slate-950 rounded-xl border border-slate-800 text-xs font-semibold">
+        <button type="button" id="authTabBtn-login" onclick="switchAuthMode('login')" class="py-2 rounded-lg bg-blue-600 text-white shadow transition">
+          <i class="fa-solid fa-right-to-bracket mr-1.5"></i>Log In
+        </button>
+        <button type="button" id="authTabBtn-signup" onclick="switchAuthMode('signup')" class="py-2 rounded-lg text-slate-400 hover:text-slate-200 transition">
+          <i class="fa-solid fa-user-plus mr-1.5"></i>Sign Up
+        </button>
+      </div>
+
+      <!-- Notification/Error Banner inside modal -->
+      <div id="authAlertBox" class="hidden p-3 rounded-xl text-xs border leading-relaxed shadow-sm"></div>
+
+      <!-- 1. LOGIN FORM -->
+      <form id="authLoginForm" onsubmit="handleAuthLogin(event)" class="space-y-4">
+        <!-- Role selector for login -->
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Login As</label>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <label class="flex items-center space-x-2 p-2.5 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-slate-700 transition">
+              <input type="radio" name="loginRole" value="EMPLOYEE" checked class="text-blue-600 focus:ring-0" />
+              <span class="text-slate-200 font-medium"><i class="fa-solid fa-user text-blue-400 mr-1.5"></i>Employee</span>
+            </label>
+            <label class="flex items-center space-x-2 p-2.5 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-slate-700 transition">
+              <input type="radio" name="loginRole" value="ADMIN" class="text-indigo-600 focus:ring-0" />
+              <span class="text-slate-200 font-medium"><i class="fa-solid fa-user-shield text-indigo-400 mr-1.5"></i>Admin</span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Gmail Address</label>
+          <div class="relative">
+            <i class="fa-solid fa-envelope absolute left-3.5 top-3 text-xs text-slate-500"></i>
+            <input type="email" id="loginEmail" required placeholder="name@gmail.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 transition" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Password</label>
+          <div class="relative">
+            <i class="fa-solid fa-lock absolute left-3.5 top-3 text-xs text-slate-500"></i>
+            <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 transition" />
+          </div>
+        </div>
+
+        <!-- Demo Quick Fills for Instant Testing -->
+        <div class="p-2.5 bg-slate-950/70 border border-slate-800 rounded-xl flex items-center justify-between text-[11px] text-slate-400">
+          <span>Quick 1-Click Demo:</span>
+          <div class="space-x-2 font-medium">
+            <button type="button" onclick="fillDemoCredentials('admin')" class="text-indigo-400 hover:text-indigo-300 underline">Admin</button>
+            <span>•</span>
+            <button type="button" onclick="fillDemoCredentials('employee')" class="text-blue-400 hover:text-blue-300 underline">Employee</button>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white text-xs font-semibold rounded-xl shadow-lg shadow-blue-600/25 transition">
+          Sign In
+        </button>
+      </form>
+
+      <!-- 2. SIGNUP FORM -->
+      <form id="authSignupForm" onsubmit="handleAuthSignup(event)" class="hidden space-y-3.5">
+        <!-- Role selector for signup -->
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Account Role</label>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <label class="flex items-center space-x-2 p-2.5 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-slate-700 transition">
+              <input type="radio" name="signupRole" value="EMPLOYEE" checked class="text-blue-600 focus:ring-0" />
+              <span class="text-slate-200 font-medium"><i class="fa-solid fa-user text-blue-400 mr-1.5"></i>Employee</span>
+            </label>
+            <label class="flex items-center space-x-2 p-2.5 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-slate-700 transition">
+              <input type="radio" name="signupRole" value="ADMIN" class="text-indigo-600 focus:ring-0" />
+              <span class="text-slate-200 font-medium"><i class="fa-solid fa-user-shield text-indigo-400 mr-1.5"></i>Admin</span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Full Name</label>
+          <input type="text" id="signupFullName" required placeholder="e.g. Rahul Sharma" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500 transition" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Gmail Address <span class="text-rose-400">*</span></label>
+          <input type="email" id="signupEmail" required placeholder="yourname@gmail.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500 transition" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Password</label>
+          <input type="password" id="signupPassword" required minlength="4" placeholder="At least 4 characters" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-blue-500 transition" />
+        </div>
+
+        <!-- Required Photo Capture / Upload -->
+        <div class="space-y-1.5 pt-1">
+          <div class="flex justify-between items-center text-xs">
+            <span class="font-medium text-slate-300">Biometric Photo <span class="text-rose-400">* (Required)</span></span>
+            <span id="signupPhotoStatusText" class="text-[10px] text-amber-400 font-semibold">Photo required</span>
+          </div>
+          
+          <div class="flex items-center space-x-2">
+            <button type="button" onclick="snapSignupPhotoFromWebcam()" class="px-3 py-1.5 bg-blue-600/80 hover:bg-blue-600 text-[11px] font-semibold text-white rounded-xl transition flex items-center space-x-1.5 shadow">
+              <i class="fa-solid fa-camera"></i>
+              <span>Snap from Camera</span>
+            </button>
+            <label class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-200 rounded-xl transition cursor-pointer border border-slate-700 flex items-center space-x-1.5">
+              <i class="fa-solid fa-upload"></i>
+              <span>Upload Photo</span>
+              <input type="file" id="signupPhotoFile" accept="image/*" onchange="previewSignupPhotoUpload(event)" class="hidden" />
+            </label>
+          </div>
+
+          <div id="signupPhotoPreviewContainer" class="hidden mt-2 p-2.5 bg-slate-950 rounded-xl border border-slate-800 flex items-center space-x-3">
+            <img id="signupPhotoPreview" class="w-12 h-12 rounded-xl object-cover border border-emerald-500/50 shadow" src="" alt="Biometric Face" />
+            <div>
+              <p class="text-xs font-semibold text-emerald-400"><i class="fa-solid fa-circle-check mr-1"></i> Facial Photo Verified</p>
+              <p class="text-[10px] text-slate-400">Ready for biometric matching</p>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/25 transition mt-2">
+          Create Account & Enroll Photo
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ================= SHIFT WORK TIME CONFIGURATION MODAL ================= -->
+  <div id="shiftModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+    <div class="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden p-6 sm:p-7 space-y-5 my-8">
+      
+      <!-- Close button -->
+      <button onclick="closeShiftModal()" class="absolute top-5 right-5 text-slate-400 hover:text-white transition cursor-pointer">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+
+      <!-- Modal Header -->
+      <div class="text-center space-y-1.5">
+        <div class="inline-flex p-3 rounded-2xl bg-gradient-to-tr from-indigo-600 via-blue-600 to-cyan-600 shadow-lg shadow-indigo-500/25">
+          <i class="fa-solid fa-business-time text-2xl text-white"></i>
+        </div>
+        <h3 class="text-lg font-bold text-white tracking-tight">Edit Shift Work Time</h3>
+        <p class="text-xs text-slate-400">Configure company shift timings, check-in deadlines, and punctuality targets.</p>
+      </div>
+
+      <!-- Alert Box inside Shift Modal -->
+      <div id="shiftAlertBox" class="hidden p-3 rounded-xl text-xs border leading-relaxed shadow-sm"></div>
+
+      <!-- Shift Settings Form -->
+      <form id="shiftSettingsForm" onsubmit="handleSaveShiftSettings(event)" class="space-y-4">
+        
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">
+            <i class="fa-solid fa-right-to-bracket text-emerald-400 mr-1.5"></i>Shift Start Time (Check-In Deadline)
+          </label>
+          <div class="relative">
+            <input type="time" id="shiftStartTimeInput" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 transition cursor-pointer" />
+          </div>
+          <p class="text-[11px] text-slate-500 mt-1">Check-ins after this time (plus grace buffer) are flagged as <b>Late Arrival</b>.</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">
+            <i class="fa-solid fa-right-from-bracket text-rose-400 mr-1.5"></i>Shift End Time (Check-Out)
+          </label>
+          <div class="relative">
+            <input type="time" id="shiftEndTimeInput" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 transition cursor-pointer" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">
+              <i class="fa-solid fa-clock text-purple-400 mr-1.5"></i>Target Hours
+            </label>
+            <input type="number" step="0.5" min="1" max="24" id="shiftTargetHoursInput" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 transition" />
+            <p class="text-[10px] text-slate-500 mt-1">e.g. 8.0 or 8.5 hrs</p>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">
+              <i class="fa-solid fa-stopwatch text-amber-400 mr-1.5"></i>Grace Buffer (Mins)
+            </label>
+            <input type="number" min="0" max="60" id="shiftGracePeriodInput" value="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 transition" />
+            <p class="text-[10px] text-slate-500 mt-1">Late tolerance in mins</p>
+          </div>
+        </div>
+
+        <!-- Live Shift Preview -->
+        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1.5">
+          <div class="flex justify-between items-center text-xs">
+            <span class="text-slate-400">Shift Window:</span>
+            <span id="shiftSchedulePreview" class="font-bold text-indigo-400">09:30 AM – 05:30 PM (8h)</span>
+          </div>
+          <p class="text-[10px] text-slate-500">Live biometric attendance will calculate on-time ratings, shift lengths, and daily hours based on these timings.</p>
+        </div>
+
+        <!-- Form Buttons -->
+        <div class="flex items-center space-x-2 pt-2">
+          <button type="button" onclick="resetShiftSettingsDefault()" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-xl border border-slate-700 transition cursor-pointer">
+            Reset (09:30 AM)
+          </button>
+          <button type="submit" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/25 transition cursor-pointer">
+            Save Shift Time
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ================= SUPABASE CLOUD DATABASE CONFIGURATION & SYNC MODAL ================= -->
+  <div id="supabaseModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+    <div class="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden p-6 sm:p-7 space-y-5 my-8">
+      
+      <!-- Close button -->
+      <button onclick="closeSupabaseConfigModal()" class="absolute top-5 right-5 text-slate-400 hover:text-white transition cursor-pointer">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+
+      <!-- Modal Header -->
+      <div class="text-center space-y-1.5">
+        <div class="inline-flex p-3 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-indigo-600 shadow-lg shadow-emerald-500/25">
+          <i class="fa-solid fa-database text-2xl text-white"></i>
+        </div>
+        <h3 class="text-lg font-bold text-white tracking-tight">Supabase Cloud Database</h3>
+        <p class="text-xs text-slate-400">Synchronize biometric punches and employee rosters to Cloud PostgreSQL</p>
+      </div>
+
+      <!-- Sync Status Card -->
+      <div id="supabaseStatusCard" class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
+        <div class="flex items-center space-x-2.5">
+          <div id="supabaseIndicatorDot" class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></div>
+          <div>
+            <p id="supabaseConnectionTitle" class="font-bold text-slate-200">Supabase Cloud Ready</p>
+            <p id="supabaseConnectionSubtitle" class="text-[11px] text-slate-400">Offline-First Hybrid Engine Active</p>
+          </div>
+        </div>
+        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">PostgreSQL</span>
+      </div>
+
+      <!-- Alert Banner -->
+      <div id="supabaseAlertBox" class="hidden p-3 rounded-xl text-xs border leading-relaxed shadow-sm"></div>
+
+      <!-- Supabase Connection Form -->
+      <form id="supabaseConfigForm" onsubmit="handleSaveSupabaseConfig(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">
+            <i class="fa-solid fa-link text-indigo-400 mr-1.5"></i>Supabase Project URL
+          </label>
+          <input type="url" id="supabaseUrlInput" placeholder="https://your-project.supabase.co" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 transition font-mono" />
+          <p class="text-[10px] text-slate-500 mt-1">Found in Supabase Dashboard &rarr; Project Settings &rarr; API</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">
+            <i class="fa-solid fa-key text-amber-400 mr-1.5"></i>Supabase Anon Public API Key
+          </label>
+          <input type="password" id="supabaseKeyInput" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 transition font-mono" />
+        </div>
+
+        <!-- Sync Actions -->
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button type="button" onclick="pushAllDataToSupabase()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition flex items-center justify-center space-x-1.5 cursor-pointer shadow-sm">
+            <i class="fa-solid fa-cloud-arrow-up text-emerald-400"></i>
+            <span>Upload Local to Cloud</span>
+          </button>
+          <button type="button" onclick="pullDataFromSupabase()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition flex items-center justify-center space-x-1.5 cursor-pointer shadow-sm">
+            <i class="fa-solid fa-cloud-arrow-down text-blue-400"></i>
+            <span>Fetch Cloud to Local</span>
+          </button>
+        </div>
+
+        <!-- One-Click SQL Schema Copy for Supabase Dashboard -->
+        <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-slate-400 font-medium"><i class="fa-solid fa-terminal text-teal-400 mr-1.5"></i>Supabase SQL Setup Script:</span>
+            <button type="button" onclick="copySupabaseSQLScript()" id="copySqlBtn" class="text-[11px] text-teal-400 hover:text-teal-300 font-semibold flex items-center space-x-1 cursor-pointer">
+              <i class="fa-solid fa-copy"></i>
+              <span>Copy SQL</span>
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-500 leading-relaxed">Run this SQL in your Supabase SQL Editor to create the <code>employees</code>, <code>attendance_logs</code>, and <code>shift_settings</code> PostgreSQL tables.</p>
+        </div>
+
+        <div class="flex items-center space-x-2 pt-2">
+          <button type="button" onclick="resetSupabaseToDemo()" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-xl border border-slate-700 transition cursor-pointer">
+            Use Local Engine
+          </button>
+          <button type="submit" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white text-xs font-semibold rounded-xl shadow-lg shadow-emerald-600/25 transition cursor-pointer">
+            Save & Connect Cloud
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-slate-950 border-t border-slate-900 py-4 text-center text-xs text-slate-400 font-medium">
+    Created by Piyush
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
